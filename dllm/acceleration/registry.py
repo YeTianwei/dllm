@@ -29,5 +29,7 @@ def list_methods() -> list[str]:
 
 
 from dllm.acceleration.methods.baseline_llada import BaselineLLaDAMethod
+from dllm.acceleration.methods.sdtt_llada import SDTTLLaDAMethod
 
 register_method(BaselineLLaDAMethod())
+register_method(SDTTLLaDAMethod())

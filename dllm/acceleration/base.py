@@ -23,6 +23,9 @@ class AccelerationMethodConfig:
 class AccelerationMethod:
     method_name: str = ""
 
+    def prepare_benchmark_config(self, config: BenchmarkConfig) -> BenchmarkConfig:
+        return config
+
     def build_model(self, config: BenchmarkConfig) -> PreTrainedModel:
         raise NotImplementedError
 

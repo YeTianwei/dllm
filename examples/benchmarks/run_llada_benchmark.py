@@ -38,22 +38,24 @@ def main():
 
     prompts = get_prompt_set(args.prompt_set)
     method = get_method(args.method)
+    benchmark_config = BenchmarkConfig(
+        method=args.method,
+        model_name_or_path=args.model_name_or_path,
+        batch_size=args.batch_size,
+        num_repeats=args.num_repeats,
+        warmup_runs=args.warmup_runs,
+        max_new_tokens=args.max_new_tokens,
+        steps=args.steps,
+        block_size=args.block_size,
+        prompt_set=args.prompt_set,
+        output_json=args.output_json,
+    )
+    benchmark_config = method.prepare_benchmark_config(benchmark_config)
     result = run_benchmark(
         method_name=args.method,
         method=method,
         prompt_examples=prompts,
-        config=BenchmarkConfig(
-            method=args.method,
-            model_name_or_path=args.model_name_or_path,
-            batch_size=args.batch_size,
-            num_repeats=args.num_repeats,
-            warmup_runs=args.warmup_runs,
-            max_new_tokens=args.max_new_tokens,
-            steps=args.steps,
-            block_size=args.block_size,
-            prompt_set=args.prompt_set,
-            output_json=args.output_json,
-        ),
+        config=benchmark_config,
     )
     print(json.dumps(result.__dict__, indent=2, ensure_ascii=False))
     if not result.success:
