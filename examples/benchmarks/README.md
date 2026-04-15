@@ -63,6 +63,16 @@ The `sdtt_llada` method reads `/data/ytw/VLA_baseline/dllm/.models/.../sdtt_conf
 and automatically applies the stored `student_steps` and `block_size` unless you
 override them on the CLI.
 
+For reproducible single-GPU experiments, use:
+
+```bash
+bash /data/ytw/VLA_baseline/dllm/examples/benchmarks/sdtt_llada/run_experiment.sh --preset pilot --stage all
+```
+
+Preset documentation lives in:
+
+- `/data/ytw/VLA_baseline/dllm/examples/benchmarks/sdtt_llada/README.md`
+
 ## LSD Status
 
 `/data/ytw/VLA_baseline/LSD` is currently treated as a planned method only.
