@@ -22,7 +22,7 @@ from dllm.acceleration.prompts import PromptExample
 
 @dataclass
 class BenchmarkConfig:
-    model_name_or_path: str
+    model_name_or_path: str = ""
     method: str = "baseline_llada"
     batch_size: int = 1
     num_repeats: int = 3

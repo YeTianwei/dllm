@@ -10,32 +10,15 @@ import json
 
 import transformers
 
-import dllm
 from dllm.acceleration.benchmark import BenchmarkConfig, run_benchmark
 from dllm.acceleration.prompts import get_prompt_set, list_prompt_sets
+from dllm.acceleration.registry import get_method, list_methods
 
 
 @dataclass
 class ScriptArguments(BenchmarkConfig):
     list_prompt_sets: bool = False
-
-
-class _DirectLLaDAMethod:
-    method_name = "baseline_llada"
-
-    @staticmethod
-    def build_model(config: BenchmarkConfig):
-        model_args = dllm.utils.ModelArguments(model_name_or_path=config.model_name_or_path)
-        return dllm.utils.get_model(model_args=model_args).eval()
-
-    @staticmethod
-    def build_tokenizer(config: BenchmarkConfig):
-        model_args = dllm.utils.ModelArguments(model_name_or_path=config.model_name_or_path)
-        return dllm.utils.get_tokenizer(model_args=model_args)
-
-    @staticmethod
-    def build_sampler(model, tokenizer, config: BenchmarkConfig):
-        return dllm.core.samplers.MDLMSampler(model=model, tokenizer=tokenizer)
+    list_methods: bool = False
 
 
 def main():
@@ -46,11 +29,18 @@ def main():
         for name in list_prompt_sets():
             print(name)
         return
+    if args.list_methods:
+        for name in list_methods():
+            print(name)
+        return
+    if not args.model_name_or_path:
+        raise ValueError("--model_name_or_path is required unless using list commands.")
 
     prompts = get_prompt_set(args.prompt_set)
+    method = get_method(args.method)
     result = run_benchmark(
         method_name=args.method,
-        method=_DirectLLaDAMethod(),
+        method=method,
         prompt_examples=prompts,
         config=BenchmarkConfig(
             method=args.method,
