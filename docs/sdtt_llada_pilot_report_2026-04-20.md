@@ -4,7 +4,7 @@ Date: 2026-04-20
 
 ## Executive Summary
 
-This round focused on getting `/data/ytw/VLA_baseline/dllm/examples/benchmarks/sdtt_llada/run_experiment.sh` and `/data/ytw/VLA_baseline/dllm/examples/benchmarks/train_sdtt_llada.py` to run SDTT-style LLaDA training and benchmarking on 2 GPUs reliably.
+This round focused on getting `examples/benchmarks/sdtt_llada/run_experiment.sh` and `examples/benchmarks/train_sdtt_llada.py` to run SDTT-style LLaDA training and benchmarking on 2 GPUs reliably.
 
 The main engineering outcome is positive:
 
@@ -22,32 +22,32 @@ The main modeling outcome is mixed:
 
 The following implementation work is complete:
 
-- `/data/ytw/VLA_baseline/dllm/examples/benchmarks/sdtt_llada/run_experiment.sh`
+- `examples/benchmarks/sdtt_llada/run_experiment.sh`
   - Fixed multi-GPU launch to use `accelerate launch`.
   - Added support for overriding `max_length`, `teacher_steps`, `student_steps`, `block_size`, `gradient_checkpointing`, and `output_tag`.
   - Moved override application to after preset selection so overrides are not silently clobbered.
   - Set the student benchmark command to use the validated `24/24` inference setting by default.
 
-- `/data/ytw/VLA_baseline/dllm/examples/benchmarks/train_sdtt_llada.py`
+- `examples/benchmarks/train_sdtt_llada.py`
   - Fixed DDP/ZeRO launch issues.
   - Removed the duplicate `gradient_checkpointing` argument conflict.
   - Added safer ZeRO-3 handling for teacher vs. student model loading.
   - Switched the default dtype to `bfloat16` to reduce memory pressure.
 
-- `/data/ytw/VLA_baseline/dllm/dllm/acceleration/methods/sdtt_llada.py`
+- `dllm/acceleration/methods/sdtt_llada.py`
   - Added local-cache-aware model loading so cached Hugging Face models can be loaded without unnecessary network metadata calls.
   - Added a benchmark default override so SDTT student inference now defaults to `24` steps and `24` block size when benchmarked from the final checkpoint.
 
-- `/data/ytw/VLA_baseline/dllm/dllm/utils/models.py`
+- `dllm/utils/models.py`
   - Added explicit `device_map` override support so higher-level loading logic is not silently ignored.
 
-- `/data/ytw/VLA_baseline/dllm/dllm/acceleration/prompts.py`
+- `dllm/acceleration/prompts.py`
   - Added `llada_eval_large`, a 16-prompt evaluation set spanning reasoning, coding, and generic writing prompts.
 
-- `/data/ytw/VLA_baseline/dllm/scripts/accelerate_configs/zero3_offload.yaml`
+- `scripts/accelerate_configs/zero3_offload.yaml`
   - Added during exploration, but this config is not usable on the current machine because it triggers DeepSpeed CPUAdam compilation against a CUDA toolkit mismatch.
 
-- `/data/ytw/VLA_baseline/dllm/scripts/accelerate_configs/zero3_param_offload.yaml`
+- `scripts/accelerate_configs/zero3_param_offload.yaml`
   - Added and validated as the correct low-memory config on the current hardware.
 
 ## Key Environment Findings
@@ -58,8 +58,8 @@ The following implementation work is complete:
 
 Consequence:
 
-- `/data/ytw/VLA_baseline/dllm/scripts/accelerate_configs/zero3_offload.yaml` is not viable on this machine.
-- `/data/ytw/VLA_baseline/dllm/scripts/accelerate_configs/zero3_param_offload.yaml` is the correct workaround because it avoids CPUAdam while still reducing memory pressure.
+- `scripts/accelerate_configs/zero3_offload.yaml` is not viable on this machine.
+- `scripts/accelerate_configs/zero3_param_offload.yaml` is the correct workaround because it avoids CPUAdam while still reducing memory pressure.
 
 ## Validated Training Recipe
 
@@ -68,11 +68,11 @@ The following training recipe is the validated low-memory path for the current h
 - 2 GPUs
 - `load_in_4bit=true`
 - `gradient_checkpointing=false`
-- `accelerate_config=/data/ytw/VLA_baseline/dllm/scripts/accelerate_configs/zero3_param_offload.yaml`
+- `accelerate_config=scripts/accelerate_configs/zero3_param_offload.yaml`
 
 This recipe was used to train:
 
-- `/data/ytw/VLA_baseline/dllm/.models/sdtt-llada-pilot`
+- `.models/sdtt-llada-pilot`
 
 with:
 
@@ -82,7 +82,7 @@ with:
 
 Training completed successfully and produced:
 
-- `/data/ytw/VLA_baseline/dllm/.models/sdtt-llada-pilot/checkpoint-final`
+- `.models/sdtt-llada-pilot/checkpoint-final`
 
 ## Benchmark Results
 
@@ -90,8 +90,8 @@ Training completed successfully and produced:
 
 Files:
 
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/smoke/baseline.json`
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/smoke/student.json`
+- `.artifacts/sdtt_llada/smoke/baseline.json`
+- `.artifacts/sdtt_llada/smoke/student.json`
 
 Observed outcome:
 
@@ -104,8 +104,8 @@ Observed outcome:
 
 Files:
 
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/pilot/baseline.json`
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/pilot/student.json`
+- `.artifacts/sdtt_llada/pilot/baseline.json`
+- `.artifacts/sdtt_llada/pilot/student.json`
 
 Observed outcome for the original `8/8` student benchmark:
 
@@ -118,12 +118,12 @@ Observed outcome for the original `8/8` student benchmark:
 
 Files:
 
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/scan_reasoning/baseline_64.json`
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/scan_reasoning/student_8.json`
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/scan_reasoning/student_12.json`
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/scan_reasoning/student_16.json`
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/scan_reasoning/student_24.json`
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/scan_reasoning/student_32.json`
+- `.artifacts/sdtt_llada/scan_reasoning/baseline_64.json`
+- `.artifacts/sdtt_llada/scan_reasoning/student_8.json`
+- `.artifacts/sdtt_llada/scan_reasoning/student_12.json`
+- `.artifacts/sdtt_llada/scan_reasoning/student_16.json`
+- `.artifacts/sdtt_llada/scan_reasoning/student_24.json`
+- `.artifacts/sdtt_llada/scan_reasoning/student_32.json`
 
 Measured tradeoff:
 
@@ -148,8 +148,8 @@ Interpretation:
 
 Files:
 
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/pilot/baseline.json`
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/pilot/student.json`
+- `.artifacts/sdtt_llada/pilot/baseline.json`
+- `.artifacts/sdtt_llada/pilot/student.json`
 
 These files were later overwritten to evaluate `llada_eval_large`.
 

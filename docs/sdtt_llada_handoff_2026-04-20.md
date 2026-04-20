@@ -12,28 +12,28 @@ Continue the SDTT-LLaDA experiment sequence with the goal:
 
 The following source files were modified in this workstream:
 
-- `/data/ytw/VLA_baseline/dllm/dllm/acceleration/methods/sdtt_llada.py`
-- `/data/ytw/VLA_baseline/dllm/dllm/acceleration/prompts.py`
-- `/data/ytw/VLA_baseline/dllm/dllm/utils/models.py`
-- `/data/ytw/VLA_baseline/dllm/examples/benchmarks/sdtt_llada/run_experiment.sh`
-- `/data/ytw/VLA_baseline/dllm/examples/benchmarks/train_sdtt_llada.py`
-- `/data/ytw/VLA_baseline/dllm/scripts/accelerate_configs/zero3_offload.yaml`
-- `/data/ytw/VLA_baseline/dllm/scripts/accelerate_configs/zero3_param_offload.yaml`
+- `dllm/acceleration/methods/sdtt_llada.py`
+- `dllm/acceleration/prompts.py`
+- `dllm/utils/models.py`
+- `examples/benchmarks/sdtt_llada/run_experiment.sh`
+- `examples/benchmarks/train_sdtt_llada.py`
+- `scripts/accelerate_configs/zero3_offload.yaml`
+- `scripts/accelerate_configs/zero3_param_offload.yaml`
 
 Two documentation files were also added:
 
-- `/data/ytw/VLA_baseline/dllm/docs/sdtt_llada_pilot_report_2026-04-20.md`
-- `/data/ytw/VLA_baseline/dllm/docs/sdtt_llada_handoff_2026-04-20.md`
+- `docs/sdtt_llada_pilot_report_2026-04-20.md`
+- `docs/sdtt_llada_handoff_2026-04-20.md`
 
 ## Important Functional Changes
 
 ### Multi-GPU Training
 
-`/data/ytw/VLA_baseline/dllm/examples/benchmarks/sdtt_llada/run_experiment.sh` now launches multi-GPU training through `accelerate launch` instead of plain single-process `python`.
+`examples/benchmarks/sdtt_llada/run_experiment.sh` now launches multi-GPU training through `accelerate launch` instead of plain single-process `python`.
 
 ### Safe ZeRO-3 Loading
 
-`/data/ytw/VLA_baseline/dllm/examples/benchmarks/train_sdtt_llada.py` now:
+`examples/benchmarks/train_sdtt_llada.py` now:
 
 - avoids the old `gradient_checkpointing` argument parser conflict,
 - handles teacher and student model loading differently under ZeRO-3,
@@ -42,11 +42,12 @@ Two documentation files were also added:
 
 ### Local-Cache-Aware Model Loading
 
-`/data/ytw/VLA_baseline/dllm/dllm/acceleration/methods/sdtt_llada.py` now sets `local_files_only=True` automatically when the model can be resolved from the local Hugging Face cache.
+`dllm/acceleration/methods/sdtt_llada.py` now sets `local_files_only=True` automatically when the model can be resolved from the local Hugging Face cache.
 
 This was added because the LoRA checkpoint at:
 
 - `/data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final`
+- `.models/smoke_test_llada_sft/checkpoint-final`
 
 points to base model:
 
@@ -56,14 +57,14 @@ and the benchmark/training path was previously stalling on Hugging Face metadata
 
 ### Benchmark Defaults
 
-`/data/ytw/VLA_baseline/dllm/dllm/acceleration/methods/sdtt_llada.py` now defaults SDTT benchmark inference to:
+`dllm/acceleration/methods/sdtt_llada.py` now defaults SDTT benchmark inference to:
 
 - `steps=24`
 - `block_size=24`
 
 when benchmarking a final SDTT checkpoint that otherwise would have used the original `8/8` metadata.
 
-`/data/ytw/VLA_baseline/dllm/examples/benchmarks/sdtt_llada/run_experiment.sh` also explicitly passes `--steps 24 --block_size 24` for the student benchmark stage.
+`examples/benchmarks/sdtt_llada/run_experiment.sh` also explicitly passes `--steps 24 --block_size 24` for the student benchmark stage.
 
 ### New Prompt Set
 
@@ -73,7 +74,7 @@ A new evaluation set was added:
 
 Defined in:
 
-- `/data/ytw/VLA_baseline/dllm/dllm/acceleration/prompts.py`
+- `dllm/acceleration/prompts.py`
 
 It contains 16 prompts spanning reasoning, coding, and generic writing.
 
@@ -86,12 +87,12 @@ This machine has a CUDA mismatch for DeepSpeed CPUAdam:
 
 Consequences:
 
-- `/data/ytw/VLA_baseline/dllm/scripts/accelerate_configs/zero3_offload.yaml` is not usable on this machine.
+- `scripts/accelerate_configs/zero3_offload.yaml` is not usable on this machine.
 - Any config that forces DeepSpeed CPUAdam compilation will fail.
 
 Use this config instead:
 
-- `/data/ytw/VLA_baseline/dllm/scripts/accelerate_configs/zero3_param_offload.yaml`
+- `scripts/accelerate_configs/zero3_param_offload.yaml`
 
 This offloads parameters to CPU but keeps optimizer offload disabled, avoiding CPUAdam.
 
@@ -106,19 +107,19 @@ source ~/.zshrc
 source /home/timer/miniconda3/etc/profile.d/conda.sh
 conda activate /home/timer/miniconda3/envs/dllm
 
-bash /data/ytw/VLA_baseline/dllm/examples/benchmarks/sdtt_llada/run_experiment.sh \
+bash examples/benchmarks/sdtt_llada/run_experiment.sh \
   --stage train \
   --preset pilot \
   --cuda_device 0,1 \
   --num_gpus 2 \
-  --accelerate_config /data/ytw/VLA_baseline/dllm/scripts/accelerate_configs/zero3_param_offload.yaml \
+  --accelerate_config scripts/accelerate_configs/zero3_param_offload.yaml \
   --load_in_4bit true \
   --gradient_checkpointing false
 ```
 
 Output checkpoint:
 
-- `/data/ytw/VLA_baseline/dllm/.models/sdtt-llada-pilot/checkpoint-final`
+- `.models/sdtt-llada-pilot/checkpoint-final`
 
 ### 2. Larger Benchmark
 
@@ -127,7 +128,7 @@ source ~/.zshrc
 source /home/timer/miniconda3/etc/profile.d/conda.sh
 conda activate /home/timer/miniconda3/envs/dllm
 
-bash /data/ytw/VLA_baseline/dllm/examples/benchmarks/sdtt_llada/run_experiment.sh \
+bash examples/benchmarks/sdtt_llada/run_experiment.sh \
   --stage benchmark \
   --preset pilot \
   --cuda_device 0 \
@@ -136,19 +137,19 @@ bash /data/ytw/VLA_baseline/dllm/examples/benchmarks/sdtt_llada/run_experiment.s
 
 Outputs:
 
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/pilot/baseline.json`
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/pilot/student.json`
+- `.artifacts/sdtt_llada/pilot/baseline.json`
+- `.artifacts/sdtt_llada/pilot/student.json`
 
 ### 3. Reasoning Scan
 
 Files already generated:
 
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/scan_reasoning/baseline_64.json`
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/scan_reasoning/student_8.json`
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/scan_reasoning/student_12.json`
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/scan_reasoning/student_16.json`
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/scan_reasoning/student_24.json`
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/scan_reasoning/student_32.json`
+- `.artifacts/sdtt_llada/scan_reasoning/baseline_64.json`
+- `.artifacts/sdtt_llada/scan_reasoning/student_8.json`
+- `.artifacts/sdtt_llada/scan_reasoning/student_12.json`
+- `.artifacts/sdtt_llada/scan_reasoning/student_16.json`
+- `.artifacts/sdtt_llada/scan_reasoning/student_24.json`
+- `.artifacts/sdtt_llada/scan_reasoning/student_32.json`
 
 Best currently validated tradeoff for the existing pilot checkpoint:
 
@@ -163,12 +164,12 @@ source ~/.zshrc
 source /home/timer/miniconda3/etc/profile.d/conda.sh
 conda activate /home/timer/miniconda3/envs/dllm
 
-bash /data/ytw/VLA_baseline/dllm/examples/benchmarks/sdtt_llada/run_experiment.sh \
+bash examples/benchmarks/sdtt_llada/run_experiment.sh \
   --stage train \
   --preset pilot \
   --cuda_device 0,1 \
   --num_gpus 2 \
-  --accelerate_config /data/ytw/VLA_baseline/dllm/scripts/accelerate_configs/zero3_param_offload.yaml \
+  --accelerate_config scripts/accelerate_configs/zero3_param_offload.yaml \
   --load_in_4bit true \
   --gradient_checkpointing false \
   --student_steps 16 \
@@ -178,8 +179,8 @@ bash /data/ytw/VLA_baseline/dllm/examples/benchmarks/sdtt_llada/run_experiment.s
 
 Expected outputs:
 
-- `/data/ytw/VLA_baseline/dllm/.models/sdtt-llada-pilot-16x16`
-- `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/pilot-16x16`
+- `.models/sdtt-llada-pilot-16x16`
+- `.artifacts/sdtt_llada/pilot-16x16`
 
 ## Known Experimental Conclusions
 
@@ -219,6 +220,6 @@ This does not fully preserve quality, but it is much better than `8/8` and still
 
 ## Things To Avoid
 
-- Do not use `/data/ytw/VLA_baseline/dllm/scripts/accelerate_configs/zero3_offload.yaml` on the current machine.
+- Do not use `scripts/accelerate_configs/zero3_offload.yaml` on the current machine.
 - Do not assume `8-step` student metadata is a good benchmark default; use `24/24` unless explicitly experimenting.
-- Do not overwrite `/data/ytw/VLA_baseline/dllm/.models/sdtt-llada-pilot`; use `--output_tag` for new experiments.
+- Do not overwrite `.models/sdtt-llada-pilot`; use `--output_tag` for new experiments.
