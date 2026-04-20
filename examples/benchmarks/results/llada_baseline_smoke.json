@@ -1,9 +1,9 @@
 {
   "method": "baseline_llada",
-  "model_name_or_path": "/data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final",
+  "model_name_or_path": ".models/smoke_test_llada_sft/checkpoint-final",
   "sampler_name": "MDLMSampler",
   "config": {
-    "model_name_or_path": "/data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final",
+    "model_name_or_path": ".models/smoke_test_llada_sft/checkpoint-final",
     "method": "baseline_llada",
     "batch_size": 1,
     "num_repeats": 3,
@@ -12,7 +12,7 @@
     "steps": 64,
     "block_size": 64,
     "prompt_set": "llada_smoke",
-    "output_json": "/data/ytw/VLA_baseline/dllm/.artifacts/llada_baseline_smoke.json"
+    "output_json": ".artifacts/llada_baseline_smoke.json"
   },
   "num_prompts": 3,
   "mean_latency_sec": 9.089220071677119,

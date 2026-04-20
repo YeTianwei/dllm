@@ -1,9 +1,9 @@
 """
 Run:
-    CUDA_VISIBLE_DEVICES=3 python /data/ytw/VLA_baseline/dllm/examples/benchmarks/train_sdtt_llada.py \
-        --teacher_model_name_or_path /data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final \
-        --student_model_name_or_path /data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final \
-        --output_dir /data/ytw/VLA_baseline/dllm/.models/sdtt-llada-smoke
+    CUDA_VISIBLE_DEVICES=3 python examples/benchmarks/train_sdtt_llada.py \
+        --teacher_model_name_or_path .models/smoke_test_llada_sft/checkpoint-final \
+        --student_model_name_or_path .models/smoke_test_llada_sft/checkpoint-final \
+        --output_dir .models/sdtt-llada-smoke
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ class SDTTMethodMetadata:
 
 @dataclass
 class SDTTDistillationArguments(dllm.utils.TrainingArguments):
-    output_dir: str = "/data/ytw/VLA_baseline/dllm/.models/sdtt-llada"
+    output_dir: str = ".models/sdtt-llada"
     per_device_train_batch_size: int = 1
     per_device_eval_batch_size: int = 1
     gradient_accumulation_steps: int = 1

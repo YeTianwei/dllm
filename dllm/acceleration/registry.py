@@ -1,6 +1,6 @@
 """
 Run:
-    python /data/ytw/VLA_baseline/dllm/examples/benchmarks/run_llada_benchmark.py --list_methods True
+    python examples/benchmarks/run_llada_benchmark.py --list_methods True
 """
 
 from __future__ import annotations

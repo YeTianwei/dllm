@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/data/ytw/VLA_baseline/dllm"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 ENV_PATH="/home/timer/miniconda3/envs/dllm"
 DEFAULT_CHECKPOINT="${ROOT}/.models/smoke_test_llada_sft/checkpoint-final"
 DEFAULT_ACCELERATE_CONFIG="${ROOT}/scripts/accelerate_configs/zero3.yaml"
@@ -16,6 +17,15 @@ DRY_RUN="false"
 NUM_GPUS="1"
 ACCELERATE_CONFIG="${DEFAULT_ACCELERATE_CONFIG}"
 OUTPUT_TAG=""
+
+resolve_repo_path() {
+  local input_path="$1"
+  if [[ "${input_path}" = /* ]]; then
+    printf '%s\n' "${input_path}"
+  else
+    printf '%s\n' "${ROOT}/${input_path}"
+  fi
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -62,6 +72,10 @@ while [[ $# -gt 0 ]]; do
       exit 1 ;;
   esac
 done
+
+TEACHER_MODEL_NAME_OR_PATH="$(resolve_repo_path "${TEACHER_MODEL_NAME_OR_PATH}")"
+STUDENT_MODEL_NAME_OR_PATH="$(resolve_repo_path "${STUDENT_MODEL_NAME_OR_PATH}")"
+ACCELERATE_CONFIG="$(resolve_repo_path "${ACCELERATE_CONFIG}")"
 
 if [[ -n "${OVERRIDE_DTYPE:-}" ]]; then
   OVERRIDE_DTYPE_ARG="--dtype ${OVERRIDE_DTYPE}"

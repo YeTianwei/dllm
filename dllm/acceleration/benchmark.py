@@ -1,8 +1,8 @@
 """
 Run:
-    CUDA_VISIBLE_DEVICES=3 python /data/ytw/VLA_baseline/dllm/examples/benchmarks/run_llada_benchmark.py \
-        --model_name_or_path /data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final \
-        --output_json /data/ytw/VLA_baseline/dllm/.artifacts/benchmark_smoke.json
+    CUDA_VISIBLE_DEVICES=3 python examples/benchmarks/run_llada_benchmark.py \
+        --model_name_or_path .models/smoke_test_llada_sft/checkpoint-final \
+        --output_json .artifacts/benchmark_smoke.json
 """
 
 from __future__ import annotations

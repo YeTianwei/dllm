@@ -46,7 +46,7 @@ Two documentation files were also added:
 
 This was added because the LoRA checkpoint at:
 
-- `/data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final`
+- `.models/smoke_test_llada_sft/checkpoint-final`
 - `.models/smoke_test_llada_sft/checkpoint-final`
 
 points to base model:

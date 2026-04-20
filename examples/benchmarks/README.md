@@ -8,7 +8,7 @@ the acceleration platform work.
 Use the validated environment and keep benchmarks on a single GPU:
 
 ```bash
-cd /data/ytw/VLA_baseline/dllm
+cd <repo_root>
 source ~/.zshrc
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate /home/timer/miniconda3/envs/dllm
@@ -24,54 +24,54 @@ override the conda environment and break imports such as `pandas` and `datasets`
 Reference command:
 
 ```bash
-python /data/ytw/VLA_baseline/dllm/examples/benchmarks/run_llada_benchmark.py \
+python examples/benchmarks/run_llada_benchmark.py \
   --method baseline_llada \
-  --model_name_or_path /data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final \
-  --output_json /data/ytw/VLA_baseline/dllm/.artifacts/llada_baseline_smoke.json
+  --model_name_or_path .models/smoke_test_llada_sft/checkpoint-final \
+  --output_json .artifacts/llada_baseline_smoke.json
 ```
 
 Reference result:
 
-- `/data/ytw/VLA_baseline/dllm/examples/benchmarks/results/llada_baseline_smoke.json`
+- `examples/benchmarks/results/llada_baseline_smoke.json`
 
 ## SDTT-style LLaDA distillation
 
 Train a trajectory-distilled student from the local smoke checkpoint:
 
 ```bash
-python /data/ytw/VLA_baseline/dllm/examples/benchmarks/train_sdtt_llada.py \
-  --teacher_model_name_or_path /data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final \
-  --student_model_name_or_path /data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final \
+python examples/benchmarks/train_sdtt_llada.py \
+  --teacher_model_name_or_path .models/smoke_test_llada_sft/checkpoint-final \
+  --student_model_name_or_path .models/smoke_test_llada_sft/checkpoint-final \
   --dataset_args "tatsu-lab/alpaca[train:8,test:4]" \
   --max_steps 1 \
   --teacher_steps 16 \
   --student_steps 4 \
   --block_size 4 \
-  --output_dir /data/ytw/VLA_baseline/dllm/.models/sdtt-llada-smoke
+  --output_dir .models/sdtt-llada-smoke
 ```
 
 Benchmark the distilled checkpoint:
 
 ```bash
-python /data/ytw/VLA_baseline/dllm/examples/benchmarks/run_llada_benchmark.py \
+python examples/benchmarks/run_llada_benchmark.py \
   --method sdtt_llada \
-  --model_name_or_path /data/ytw/VLA_baseline/dllm/.models/sdtt-llada-smoke/checkpoint-final \
-  --output_json /data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada_smoke.json
+  --model_name_or_path .models/sdtt-llada-smoke/checkpoint-final \
+  --output_json .artifacts/sdtt_llada_smoke.json
 ```
 
-The `sdtt_llada` method reads `/data/ytw/VLA_baseline/dllm/.models/.../sdtt_config.json`
+The `sdtt_llada` method reads `.models/.../sdtt_config.json`
 and automatically applies the stored `student_steps` and `block_size` unless you
 override them on the CLI.
 
 For reproducible single-GPU experiments, use:
 
 ```bash
-bash /data/ytw/VLA_baseline/dllm/examples/benchmarks/sdtt_llada/run_experiment.sh --preset pilot --stage all
+bash examples/benchmarks/sdtt_llada/run_experiment.sh --preset pilot --stage all
 ```
 
 Preset documentation lives in:
 
-- `/data/ytw/VLA_baseline/dllm/examples/benchmarks/sdtt_llada/README.md`
+- `examples/benchmarks/sdtt_llada/README.md`
 
 ## LSD Status
 

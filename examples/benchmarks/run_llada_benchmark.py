@@ -1,12 +1,14 @@
 """
 Run:
-    CUDA_VISIBLE_DEVICES=3 python /data/ytw/VLA_baseline/dllm/examples/benchmarks/run_llada_benchmark.py \
-        --model_name_or_path /data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final \
-        --output_json /data/ytw/VLA_baseline/dllm/.artifacts/benchmark_smoke.json
+    CUDA_VISIBLE_DEVICES=3 python examples/benchmarks/run_llada_benchmark.py \
+        --model_name_or_path .models/smoke_test_llada_sft/checkpoint-final \
+        --output_json .artifacts/benchmark_smoke.json
 """
 
 from dataclasses import dataclass
 import json
+import os
+from pathlib import Path
 
 import transformers
 
@@ -19,6 +21,15 @@ from dllm.acceleration.registry import get_method, list_methods
 class ScriptArguments(BenchmarkConfig):
     list_prompt_sets: bool = False
     list_methods: bool = False
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _resolve_repo_path(path: str | None) -> str | None:
+    if path is None or os.path.isabs(path):
+        return path
+    return str((REPO_ROOT / path).resolve())
 
 
 def main():
@@ -35,6 +46,8 @@ def main():
         return
     if not args.model_name_or_path:
         raise ValueError("--model_name_or_path is required unless using list commands.")
+    args.model_name_or_path = _resolve_repo_path(args.model_name_or_path)
+    args.output_json = _resolve_repo_path(args.output_json)
 
     prompts = get_prompt_set(args.prompt_set)
     method = get_method(args.method)

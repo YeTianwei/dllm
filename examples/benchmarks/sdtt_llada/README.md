@@ -6,7 +6,7 @@ This directory contains reproducible single-GPU experiment entrypoints for
 All commands assume:
 
 ```bash
-cd /data/ytw/VLA_baseline/dllm
+cd <repo_root>
 source ~/.zshrc
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate /home/timer/miniconda3/envs/dllm
@@ -50,8 +50,8 @@ The experiment runner currently provides three presets:
 
 All presets default to:
 
-- Teacher checkpoint: `/data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final`
-- Student initialization checkpoint: `/data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final`
+- Teacher checkpoint: `.models/smoke_test_llada_sft/checkpoint-final`
+- Student initialization checkpoint: `.models/smoke_test_llada_sft/checkpoint-final`
 - Max length: `1024`
 - Seed: `42`
 - Prompt set: `llada_smoke`
@@ -62,7 +62,7 @@ All presets default to:
 Use the unified script:
 
 ```bash
-bash /data/ytw/VLA_baseline/dllm/examples/benchmarks/sdtt_llada/run_experiment.sh --preset pilot --stage all
+bash examples/benchmarks/sdtt_llada/run_experiment.sh --preset pilot --stage all
 ```
 
 Supported stages:
@@ -85,12 +85,12 @@ Useful flags:
 For preset `<preset>`, the script writes:
 
 - Student checkpoint:
-  - `/data/ytw/VLA_baseline/dllm/.models/sdtt-llada-<preset>/checkpoint-final`
+  - `.models/sdtt-llada-<preset>/checkpoint-final`
 - Baseline benchmark:
-  - `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/<preset>/baseline.json`
+  - `.artifacts/sdtt_llada/<preset>/baseline.json`
 - Student benchmark:
-  - `/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/<preset>/student.json`
+  - `.artifacts/sdtt_llada/<preset>/student.json`
 
-The student checkpoint contains `/data/ytw/VLA_baseline/dllm/.models/.../sdtt_config.json`,
+The student checkpoint contains `.models/.../sdtt_config.json`,
 which allows `sdtt_llada` benchmark runs to recover the stored `student_steps` and
 `block_size` automatically.

@@ -1,31 +1,32 @@
 """
 Run:
-    CUDA_VISIBLE_DEVICES=3 python /data/ytw/VLA_baseline/dllm/examples/benchmarks/train_sdtt_llada.py \
-        --teacher_model_name_or_path /data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final \
-        --student_model_name_or_path /data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final \
+    CUDA_VISIBLE_DEVICES=3 python examples/benchmarks/train_sdtt_llada.py \
+        --teacher_model_name_or_path .models/smoke_test_llada_sft/checkpoint-final \
+        --student_model_name_or_path .models/smoke_test_llada_sft/checkpoint-final \
         --dataset_args "tatsu-lab/alpaca[train:8,test:4]" \
         --max_steps 1 \
         --teacher_steps 16 \
         --student_steps 4 \
-        --output_dir /data/ytw/VLA_baseline/dllm/.models/sdtt-llada-smoke
+        --output_dir .models/sdtt-llada-smoke
 
     CUDA_VISIBLE_DEVICES=0,1 accelerate launch \
-        --config_file /data/ytw/VLA_baseline/dllm/scripts/accelerate_configs/zero3.yaml \
+        --config_file scripts/accelerate_configs/zero3.yaml \
         --num_processes 2 \
-        /data/ytw/VLA_baseline/dllm/examples/benchmarks/train_sdtt_llada.py \
-        --teacher_model_name_or_path /data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final \
-        --student_model_name_or_path /data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final \
+        examples/benchmarks/train_sdtt_llada.py \
+        --teacher_model_name_or_path .models/smoke_test_llada_sft/checkpoint-final \
+        --student_model_name_or_path .models/smoke_test_llada_sft/checkpoint-final \
         --dataset_args "tatsu-lab/alpaca[train:8,test:4]" \
         --max_steps 1 \
         --teacher_steps 16 \
         --student_steps 4 \
-        --output_dir /data/ytw/VLA_baseline/dllm/.models/sdtt-llada-smoke
+        --output_dir .models/sdtt-llada-smoke
 """
 
 import os
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from functools import partial
+from pathlib import Path
 
 import accelerate
 import deepspeed
@@ -43,15 +44,22 @@ from dllm.acceleration.methods.sdtt_llada import (
 )
 
 logger = dllm.utils.get_default_logger(__name__)
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _resolve_repo_path(path: str) -> str:
+    if os.path.isabs(path):
+        return path
+    return str((REPO_ROOT / path).resolve())
 
 
 @dataclass
 class SDTTModelArguments:
     teacher_model_name_or_path: str = (
-        "/data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final"
+        ".models/smoke_test_llada_sft/checkpoint-final"
     )
     student_model_name_or_path: str = (
-        "/data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final"
+        ".models/smoke_test_llada_sft/checkpoint-final"
     )
     load_in_4bit: bool = False
     dtype: str = "bfloat16"
@@ -72,6 +80,13 @@ def main():
         (SDTTModelArguments, SDTTDataArguments, SDTTDistillationArguments)
     )
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+    model_args.teacher_model_name_or_path = _resolve_repo_path(
+        model_args.teacher_model_name_or_path
+    )
+    model_args.student_model_name_or_path = _resolve_repo_path(
+        model_args.student_model_name_or_path
+    )
+    training_args.output_dir = _resolve_repo_path(training_args.output_dir)
 
     dllm.utils.print_args_main(model_args, data_args, training_args)
     dllm.utils.initial_training_setup(model_args, data_args, training_args)

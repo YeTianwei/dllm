@@ -1,6 +1,6 @@
 """
 Run:
-    python /data/ytw/VLA_baseline/dllm/examples/benchmarks/run_llada_benchmark.py --list_prompt_sets True
+    python examples/benchmarks/run_llada_benchmark.py --list_prompt_sets True
 """
 
 from dataclasses import dataclass
