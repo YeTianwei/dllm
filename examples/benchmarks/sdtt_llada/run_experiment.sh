@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="/data/ytw/VLA_baseline/dllm"
 ENV_PATH="/home/timer/miniconda3/envs/dllm"
 DEFAULT_CHECKPOINT="${ROOT}/.models/smoke_test_llada_sft/checkpoint-final"
+DEFAULT_ACCELERATE_CONFIG="${ROOT}/scripts/accelerate_configs/zero3.yaml"
 
 PRESET="pilot"
 STAGE="all"
@@ -12,6 +13,9 @@ TEACHER_MODEL_NAME_OR_PATH="${DEFAULT_CHECKPOINT}"
 STUDENT_MODEL_NAME_OR_PATH="${DEFAULT_CHECKPOINT}"
 CUDA_DEVICE="3"
 DRY_RUN="false"
+NUM_GPUS="1"
+ACCELERATE_CONFIG="${DEFAULT_ACCELERATE_CONFIG}"
+OUTPUT_TAG=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -27,6 +31,30 @@ while [[ $# -gt 0 ]]; do
       STUDENT_MODEL_NAME_OR_PATH="$2"; shift 2 ;;
     --cuda_device)
       CUDA_DEVICE="$2"; shift 2 ;;
+    --num_gpus)
+      NUM_GPUS="$2"; shift 2 ;;
+    --accelerate_config)
+      ACCELERATE_CONFIG="$2"; shift 2 ;;
+    --train_batch_size)
+      OVERRIDE_TRAIN_BATCH_SIZE="$2"; shift 2 ;;
+    --grad_acc_steps)
+      OVERRIDE_GRAD_ACC_STEPS="$2"; shift 2 ;;
+    --max_length)
+      OVERRIDE_MAX_LENGTH="$2"; shift 2 ;;
+    --teacher_steps)
+      OVERRIDE_TEACHER_STEPS="$2"; shift 2 ;;
+    --student_steps)
+      OVERRIDE_STUDENT_STEPS="$2"; shift 2 ;;
+    --block_size)
+      OVERRIDE_BLOCK_SIZE="$2"; shift 2 ;;
+    --output_tag)
+      OUTPUT_TAG="$2"; shift 2 ;;
+    --dtype)
+      OVERRIDE_DTYPE="$2"; shift 2 ;;
+    --load_in_4bit)
+      OVERRIDE_LOAD_IN_4BIT="$2"; shift 2 ;;
+    --gradient_checkpointing)
+      OVERRIDE_GRADIENT_CHECKPOINTING="$2"; shift 2 ;;
     --dry_run)
       DRY_RUN="true"; shift 1 ;;
     *)
@@ -35,6 +63,22 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -n "${OVERRIDE_DTYPE:-}" ]]; then
+  OVERRIDE_DTYPE_ARG="--dtype ${OVERRIDE_DTYPE}"
+else
+  OVERRIDE_DTYPE_ARG=""
+fi
+if [[ -n "${OVERRIDE_LOAD_IN_4BIT:-}" ]]; then
+  OVERRIDE_LOAD_IN_4BIT_ARG="--load_in_4bit ${OVERRIDE_LOAD_IN_4BIT}"
+else
+  OVERRIDE_LOAD_IN_4BIT_ARG=""
+fi
+if [[ -n "${OVERRIDE_GRADIENT_CHECKPOINTING:-}" ]]; then
+  OVERRIDE_GRADIENT_CHECKPOINTING_ARG="--gradient_checkpointing ${OVERRIDE_GRADIENT_CHECKPOINTING}"
+else
+  OVERRIDE_GRADIENT_CHECKPOINTING_ARG=""
+fi
+
 case "${PRESET}" in
   smoke)
     DATASET_ARGS='tatsu-lab/alpaca[train:8,test:4]'
@@ -42,7 +86,7 @@ case "${PRESET}" in
     TEACHER_STEPS=16
     STUDENT_STEPS=4
     BLOCK_SIZE=4
-    MAX_LENGTH=1024
+    MAX_LENGTH=512
     LEARNING_RATE=2e-5
     TRAIN_BATCH_SIZE=1
     EVAL_BATCH_SIZE=1
@@ -95,12 +139,49 @@ case "${PRESET}" in
     exit 1 ;;
 esac
 
-OUTPUT_DIR="${ROOT}/.models/sdtt-llada-${PRESET}"
-ARTIFACT_DIR="${ROOT}/.artifacts/sdtt_llada/${PRESET}"
+# Apply value overrides after preset selection so they are not overwritten.
+if [[ -n "${OVERRIDE_TRAIN_BATCH_SIZE:-}" ]]; then
+  TRAIN_BATCH_SIZE="${OVERRIDE_TRAIN_BATCH_SIZE}"
+fi
+if [[ -n "${OVERRIDE_GRAD_ACC_STEPS:-}" ]]; then
+  GRAD_ACC_STEPS="${OVERRIDE_GRAD_ACC_STEPS}"
+fi
+if [[ -n "${OVERRIDE_MAX_LENGTH:-}" ]]; then
+  MAX_LENGTH="${OVERRIDE_MAX_LENGTH}"
+fi
+if [[ -n "${OVERRIDE_TEACHER_STEPS:-}" ]]; then
+  TEACHER_STEPS="${OVERRIDE_TEACHER_STEPS}"
+fi
+if [[ -n "${OVERRIDE_STUDENT_STEPS:-}" ]]; then
+  STUDENT_STEPS="${OVERRIDE_STUDENT_STEPS}"
+fi
+if [[ -n "${OVERRIDE_BLOCK_SIZE:-}" ]]; then
+  BLOCK_SIZE="${OVERRIDE_BLOCK_SIZE}"
+fi
+
+OUTPUT_SUFFIX="${PRESET}"
+if [[ -n "${OUTPUT_TAG}" ]]; then
+  OUTPUT_SUFFIX="${PRESET}-${OUTPUT_TAG}"
+fi
+
+OUTPUT_DIR="${ROOT}/.models/sdtt-llada-${OUTPUT_SUFFIX}"
+ARTIFACT_DIR="${ROOT}/.artifacts/sdtt_llada/${OUTPUT_SUFFIX}"
 BASELINE_JSON="${ARTIFACT_DIR}/baseline.json"
 STUDENT_JSON="${ARTIFACT_DIR}/student.json"
 TRAIN_SCRIPT="${ROOT}/examples/benchmarks/train_sdtt_llada.py"
 BENCH_SCRIPT="${ROOT}/examples/benchmarks/run_llada_benchmark.py"
+
+# Calculate number of visible GPUs / processes
+COUNT_GPUS=$(echo "${CUDA_DEVICE}" | tr ',' '\n' | wc -l)
+if [[ "${NUM_GPUS}" != "1" ]]; then
+  COUNT_GPUS="${NUM_GPUS}"
+fi
+
+if [[ "${COUNT_GPUS}" -gt 1 ]]; then
+  TRAIN_LAUNCHER="accelerate launch --config_file ${ACCELERATE_CONFIG} --num_processes ${COUNT_GPUS}"
+else
+  TRAIN_LAUNCHER="python"
+fi
 
 TRAIN_CMD=$(cat <<EOF
 cd ${ROOT}
@@ -108,8 +189,9 @@ source ~/.zshrc
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate ${ENV_PATH}
 export PYTHONNOUSERSITE=1
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export CUDA_VISIBLE_DEVICES=${CUDA_DEVICE}
-python ${TRAIN_SCRIPT} \
+${TRAIN_LAUNCHER} ${TRAIN_SCRIPT} \
   --teacher_model_name_or_path ${TEACHER_MODEL_NAME_OR_PATH} \
   --student_model_name_or_path ${STUDENT_MODEL_NAME_OR_PATH} \
   --dataset_args "${DATASET_ARGS}" \
@@ -127,7 +209,10 @@ python ${TRAIN_SCRIPT} \
   --output_dir ${OUTPUT_DIR} \
   --save_steps ${SAVE_STEPS} \
   --eval_strategy no \
-  --report_to none
+  --report_to none \
+  ${OVERRIDE_DTYPE_ARG} \
+  ${OVERRIDE_LOAD_IN_4BIT_ARG} \
+  ${OVERRIDE_GRADIENT_CHECKPOINTING_ARG}
 EOF
 )
 
@@ -165,7 +250,9 @@ python ${BENCH_SCRIPT} \
   --output_json ${STUDENT_JSON} \
   --num_repeats ${NUM_REPEATS} \
   --warmup_runs ${WARMUP_RUNS} \
-  --max_new_tokens ${MAX_NEW_TOKENS}
+  --max_new_tokens ${MAX_NEW_TOKENS} \
+  --steps 24 \
+  --block_size 24
 EOF
 )
 
@@ -175,6 +262,9 @@ echo "Teacher checkpoint: ${TEACHER_MODEL_NAME_OR_PATH}"
 echo "Student init checkpoint: ${STUDENT_MODEL_NAME_OR_PATH}"
 echo "Output dir: ${OUTPUT_DIR}"
 echo "Artifacts dir: ${ARTIFACT_DIR}"
+echo "CUDA_VISIBLE_DEVICES: ${CUDA_DEVICE}"
+echo "Number of GPUs: ${COUNT_GPUS}"
+echo "Train launcher: ${TRAIN_LAUNCHER}"
 
 if [[ "${DRY_RUN}" == "true" ]]; then
   echo

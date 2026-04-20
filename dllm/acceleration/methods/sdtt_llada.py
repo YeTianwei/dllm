@@ -9,6 +9,7 @@ Run:
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,7 @@ from typing import Any
 import torch
 import torch.nn.functional as F
 import transformers
+from huggingface_hub import try_to_load_from_cache
 from peft import AutoPeftModel
 
 import dllm
@@ -27,6 +29,8 @@ from dllm.core.schedulers import BaseAlphaScheduler, LinearAlphaScheduler
 
 
 SDTT_CONFIG_NAME = "sdtt_config.json"
+SDTT_BENCHMARK_STEPS = 24
+SDTT_BENCHMARK_BLOCK_SIZE = 24
 
 
 @dataclass
@@ -88,6 +92,18 @@ def _make_quant_config(load_in_4bit: bool, dtype: torch.dtype):
     )
 
 
+def _resolve_local_files_only(model_name_or_path: str) -> bool:
+    if os.path.isdir(model_name_or_path):
+        return True
+
+    cached_config = try_to_load_from_cache(
+        repo_id=model_name_or_path,
+        filename="config.json",
+        repo_type="model",
+    )
+    return isinstance(cached_config, str) and os.path.exists(cached_config)
+
+
 def load_llada_checkpoint(
     model_name_or_path: str,
     *,
@@ -98,8 +114,10 @@ def load_llada_checkpoint(
 ):
     adapter_config_path = Path(model_name_or_path) / "adapter_config.json"
     quant_config = _make_quant_config(load_in_4bit, dtype)
+    local_files_only = _resolve_local_files_only(model_name_or_path)
     common_kwargs = {
         "device_map": device_map,
+        "local_files_only": local_files_only,
     }
     if quant_config is not None:
         common_kwargs["quantization_config"] = quant_config
@@ -118,7 +136,11 @@ def load_llada_checkpoint(
         load_in_4bit=load_in_4bit,
         lora=is_trainable,
     )
-    model = dllm.utils.get_model(model_args=model_args)
+    model = dllm.utils.get_model(
+        model_args=model_args,
+        dtype=dtype,
+        device_map=device_map,
+    )
     for param in model.parameters():
         param.requires_grad_(is_trainable and param.requires_grad)
     return model
@@ -269,9 +291,9 @@ class SDTTLLaDAMethod(AccelerationMethod):
         if metadata is None:
             return config
         if config.steps == 64:
-            config.steps = metadata.student_steps
+            config.steps = max(metadata.student_steps, SDTT_BENCHMARK_STEPS)
         if config.block_size == 64:
-            config.block_size = metadata.block_size
+            config.block_size = max(metadata.block_size, SDTT_BENCHMARK_BLOCK_SIZE)
         return config
 
     def build_model(self, config: BenchmarkConfig):

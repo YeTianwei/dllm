@@ -1,0 +1,36 @@
+{
+  "method": "sdtt_llada",
+  "model_name_or_path": "/data/ytw/VLA_baseline/dllm/.models/sdtt-llada-smoke/checkpoint-final",
+  "sampler_name": "MDLMSampler",
+  "config": {
+    "model_name_or_path": "/data/ytw/VLA_baseline/dllm/.models/sdtt-llada-smoke/checkpoint-final",
+    "method": "sdtt_llada",
+    "batch_size": 1,
+    "num_repeats": 1,
+    "warmup_runs": 0,
+    "max_new_tokens": 8,
+    "steps": 4,
+    "block_size": 4,
+    "prompt_set": "llada_smoke",
+    "output_json": "/data/ytw/VLA_baseline/dllm/.artifacts/sdtt_llada/smoke/student.json"
+  },
+  "num_prompts": 3,
+  "mean_latency_sec": 0.8820022499421611,
+  "p50_latency_sec": 0.8820022499421611,
+  "p95_latency_sec": 0.8820022499421611,
+  "tokens_per_sec": 27.210814940181663,
+  "samples_per_sec": 3.401351867522708,
+  "peak_gpu_mem_mb": 15508.919921875,
+  "generated_texts": [
+    "<|startoftext|><|start_header_id|>user<|end_header_id|>\n\nIf a train moves at 60 km/h for 3 hours, how far does it travel?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\nThe train travels 180 km",
+    "<|startoftext|><|start_header_id|>user<|end_header_id|>\n\nWrite a short Python function that checks whether a string is a palindrome.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\nHere is a short Python function that checks",
+    "<|startoftext|><|start_header_id|>user<|end_header_id|>\n\nWrite a concise paragraph about why clean code matters in research projects.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\nClean code is crucial in research projects for"
+  ],
+  "trimmed_outputs": [
+    "The train travels 180 km",
+    "Here is a short Python function that checks",
+    "Clean code is crucial in research projects for"
+  ],
+  "success": true,
+  "error_message": null
+}

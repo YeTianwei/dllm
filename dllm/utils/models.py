@@ -36,13 +36,18 @@ def get_model(
     attn_implementation = kwargs.get(
         "attn_implementation", getattr(model_args, "attn_implementation", None)
     )
+    explicit_device_map = kwargs.get("device_map", None)
 
     # Device map: skip when ZeRO-3
     device_map = (
-        {"": accelerate.PartialState().local_process_index}
-        if not transformers.modeling_utils.is_deepspeed_zero3_enabled()
-        and torch.cuda.is_available()
-        else None
+        explicit_device_map
+        if "device_map" in kwargs
+        else (
+            {"": accelerate.PartialState().local_process_index}
+            if not transformers.modeling_utils.is_deepspeed_zero3_enabled()
+            and torch.cuda.is_available()
+            else None
+        )
     )
 
     quant_config = None

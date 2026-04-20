@@ -8,15 +8,30 @@ Run:
         --teacher_steps 16 \
         --student_steps 4 \
         --output_dir /data/ytw/VLA_baseline/dllm/.models/sdtt-llada-smoke
+
+    CUDA_VISIBLE_DEVICES=0,1 accelerate launch \
+        --config_file /data/ytw/VLA_baseline/dllm/scripts/accelerate_configs/zero3.yaml \
+        --num_processes 2 \
+        /data/ytw/VLA_baseline/dllm/examples/benchmarks/train_sdtt_llada.py \
+        --teacher_model_name_or_path /data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final \
+        --student_model_name_or_path /data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final \
+        --dataset_args "tatsu-lab/alpaca[train:8,test:4]" \
+        --max_steps 1 \
+        --teacher_steps 16 \
+        --student_steps 4 \
+        --output_dir /data/ytw/VLA_baseline/dllm/.models/sdtt-llada-smoke
 """
 
 import os
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from functools import partial
 
 import accelerate
+import deepspeed
 import torch
 import transformers
+from transformers.integrations import deepspeed as hf_deepspeed
 
 import dllm
 from dllm.acceleration.methods.sdtt_llada import (
@@ -38,7 +53,7 @@ class SDTTModelArguments:
     student_model_name_or_path: str = (
         "/data/ytw/VLA_baseline/dllm/.models/smoke_test_llada_sft/checkpoint-final"
     )
-    load_in_4bit: bool = True
+    load_in_4bit: bool = False
     dtype: str = "bfloat16"
 
 
@@ -60,6 +75,8 @@ def main():
 
     dllm.utils.print_args_main(model_args, data_args, training_args)
     dllm.utils.initial_training_setup(model_args, data_args, training_args)
+    state = accelerate.PartialState()
+    is_zero3 = transformers.modeling_utils.is_deepspeed_zero3_enabled()
 
     tokenizer = dllm.utils.get_tokenizer(
         model_name_or_path=model_args.teacher_model_name_or_path
@@ -90,22 +107,51 @@ def main():
             if drop_columns:
                 dataset[split] = dataset[split].remove_columns(drop_columns)
 
-    device_map = {"": accelerate.PartialState().local_process_index}
     dtype = getattr(torch, model_args.dtype)
-    teacher_model = load_llada_checkpoint(
-        model_args.teacher_model_name_or_path,
-        is_trainable=False,
-        load_in_4bit=model_args.load_in_4bit,
-        device_map=device_map,
-        dtype=dtype,
+    process_device = state.device
+    teacher_device_map = None if is_zero3 else (
+        {"": state.local_process_index} if torch.cuda.is_available() else None
     )
+    student_device_map = None if is_zero3 else teacher_device_map
+    logger.info(
+        "Distributed setup: rank=%s local_rank=%s world_size=%s zero3=%s teacher_device_map=%s student_device_map=%s",
+        state.process_index,
+        state.local_process_index,
+        state.num_processes,
+        is_zero3,
+        teacher_device_map,
+        student_device_map,
+    )
+    teacher_load_context = deepspeed.zero.Init(enabled=False) if is_zero3 else nullcontext()
+    hf_ds_config = None
+    if is_zero3:
+        weak_ref = getattr(hf_deepspeed, "_hf_deepspeed_config_weak_ref", None)
+        hf_ds_config = weak_ref() if weak_ref is not None else None
+        hf_deepspeed.unset_hf_deepspeed_config()
+    with teacher_load_context:
+        teacher_model = load_llada_checkpoint(
+            model_args.teacher_model_name_or_path,
+            is_trainable=False,
+            load_in_4bit=model_args.load_in_4bit,
+            device_map=teacher_device_map,
+            dtype=dtype,
+        )
+    if is_zero3 and hf_ds_config is not None:
+        hf_deepspeed.set_hf_deepspeed_config(hf_ds_config)
+    if is_zero3 and torch.cuda.is_available():
+        teacher_model.to(process_device)
     student_model = load_llada_checkpoint(
         model_args.student_model_name_or_path,
         is_trainable=True,
         load_in_4bit=model_args.load_in_4bit,
-        device_map=device_map,
+        device_map=student_device_map,
         dtype=dtype,
     )
+
+    # Enable gradient checkpointing to save memory.
+    if training_args.gradient_checkpointing:
+        teacher_model.gradient_checkpointing_enable()
+        student_model.gradient_checkpointing_enable()
 
     trainer = LLaDATrajectoryDistillationTrainer(
         teacher_model=teacher_model,
